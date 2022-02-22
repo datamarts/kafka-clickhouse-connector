@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <modules>
+        <module>kafka-clickhouse-avro</module>
+        <module>kafka-clickhouse-writer</module>
+        <module>kafka-clickhouse-reader</module>
+    </modules>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>2.2.4.RELEASE</version>
+    </parent>
+
+    <groupId>ru.datamart.connector</groupId>
+    <artifactId>kafka-clickhouse-connector-parent</artifactId>
+    <version>3.6.0</version>
+    <packaging>pom</packaging>
+
+    <properties>
+        <java.version>1.8</java.version>
+        <vertx.version>3.8.5</vertx.version>
+        <vertx-jdbc-client.version>3.9.0</vertx-jdbc-client.version>
+        <junit-jupiter-engine.version>5.4.0</junit-jupiter-engine.version>
+        <apache.commons.lang.version>3.10</apache.commons.lang.version>
+        <avro.version>1.9.2</avro.version>
+        <confluent.version>5.4.1</confluent.version>
+        <clickhouse.jdbc.version>0.3.1</clickhouse.jdbc.version>
+        <guava.version>28.2-jre</guava.version>
+        <logback.version>1.2.3</logback.version>
+        <lombok.version>1.18.12</lombok.version>
+        <skipITs>true</skipITs>
+    </properties>
+
+    <dependencies>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.1.2</version>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

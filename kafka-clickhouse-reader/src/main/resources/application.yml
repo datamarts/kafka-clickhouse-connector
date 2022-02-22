@@ -1,0 +1,35 @@
+vertx:
+  clustered:true
+
+logging:
+  level:
+    ru.datamart.kafka: ${LOG_LEVEL:DEBUG}
+    org.apache.kafka: ${KAFKA_LOG_LEVEL:INFO}
+
+verticle:
+  worker:
+    task-worker:
+      poolSize: ${TASK_WORKER_POOL_SIZE:12}
+      poolName: ${TASK_WORKER_POOL_NAME:task-worker}
+      responseTimeoutMs: ${TASK_WORKER_RESPONSE_TIMEOUT_MS:86400000}
+
+http:
+  port: ${SERVER_PORT:8086}
+
+datasource:
+  clickhouse:
+    database: ${CLICKHOUSE_DB_NAME:test1}
+    user: ${CLICKHOUSE_USERNAME:default}
+    password: ${CLICKHOUSE_PASS:}
+    hosts: ${CLICKHOUSE_HOSTS:clickhouse.host:8123}
+    fetchSize: ${CLICKHOUSE_FETCH_SIZE:1000}
+
+kafka:
+  clickhouse:
+    producer:
+      property:
+        key.serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+        value.serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+    cluster:
+      zookeeperHosts: ${ZOOKEEPER_HOSTS:zk-1.dtm.local}
+      rootPath: ${KAFKA_CLUSTER_ROOTPATH:arenadata/cluster/21}
