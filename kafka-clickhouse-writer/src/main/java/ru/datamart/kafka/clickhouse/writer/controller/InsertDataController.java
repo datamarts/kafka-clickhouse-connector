@@ -15,19 +15,22 @@
  */
 package ru.datamart.kafka.clickhouse.writer.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpHeaders;
+import io.vertx.ext.web.RoutingContext;
+import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
+import lombok.val;
+import org.springframework.stereotype.Component;
+import org.springframework.util.MimeTypeUtils;
 import ru.datamart.kafka.clickhouse.writer.model.DataTopic;
 import ru.datamart.kafka.clickhouse.writer.model.InsertDataContext;
 import ru.datamart.kafka.clickhouse.writer.model.InsertDataRequest;
 import ru.datamart.kafka.clickhouse.writer.model.StopRequest;
 import ru.datamart.kafka.clickhouse.writer.repository.InsertDataContextRepository;
 import ru.datamart.kafka.clickhouse.writer.service.executor.InsertDataRequestExecutor;
-import io.vertx.core.Vertx;
-import io.vertx.core.http.HttpHeaders;
-import io.vertx.ext.web.RoutingContext;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-import org.springframework.util.MimeTypeUtils;
 
 @Slf4j
 @Component
@@ -36,19 +39,20 @@ public class InsertDataController {
     private final InsertDataContextRepository dataContextRepository;
     private final InsertDataRequestExecutor executor;
     private final Vertx vertx;
+    private final ObjectMapper objectMapper;
 
     public void startLoad(RoutingContext context) {
         executor.execute(getOrCreate(context));
     }
 
+    @SneakyThrows
     private InsertDataContext getOrCreate(RoutingContext ctx) {
         InsertDataContext context;
         try {
-            InsertDataRequest request;
-            request = ctx.getBodyAsJson().mapTo(InsertDataRequest.class);
+            val request = objectMapper.readValue(ctx.getBodyAsString(), InsertDataRequest.class);
             log.info("Received for path: [{}] data write request: [{}]", ctx.normalisedPath(), request);
             context = dataContextRepository.get(InsertDataContext.createContextId(request.getKafkaTopic(), request.getRequestId()))
-                .orElseGet(() -> new InsertDataContext(request, ctx));
+                    .orElseGet(() -> new InsertDataContext(request, ctx));
             context.setContext(ctx);
         } catch (Exception e) {
             log.error("Error while creating context from {}, url {}", ctx.getBodyAsString(), ctx.request().absoluteURI());
@@ -58,18 +62,18 @@ public class InsertDataController {
         return context;
     }
 
+    @SneakyThrows
     public void stopLoad(RoutingContext ctx) {
         try {
-            StopRequest request;
-            request = ctx.getBodyAsJson().mapTo(StopRequest.class);
+            val request = objectMapper.readValue(ctx.getBodyAsString(), StopRequest.class);
             log.info("Received for path: [{}] data write request: [{}]", ctx.normalisedPath(), request);
             String contextId = InsertDataContext.createContextId(request.getKafkaTopic(), request.getRequestId());
             dataContextRepository.get(contextId)
-                .ifPresent(insertDataContext -> vertx.eventBus().send(DataTopic.SEND_RESPONSE.getValue(), contextId));
+                    .ifPresent(insertDataContext -> vertx.eventBus().send(DataTopic.SEND_RESPONSE.getValue(), contextId));
             ctx.response()
-                .putHeader(HttpHeaders.CONTENT_TYPE, MimeTypeUtils.APPLICATION_JSON_VALUE)
-                .setStatusCode(200)
-                .end("");
+                    .putHeader(HttpHeaders.CONTENT_TYPE, MimeTypeUtils.APPLICATION_JSON_VALUE)
+                    .setStatusCode(200)
+                    .end("");
         } catch (Exception e) {
             log.error("Error while creating context from {}, url {}", ctx.getBodyAsString(), ctx.request().absoluteURI());
             ctx.fail(e);

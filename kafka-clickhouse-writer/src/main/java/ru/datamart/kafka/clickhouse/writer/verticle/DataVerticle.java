@@ -15,23 +15,22 @@
  */
 package ru.datamart.kafka.clickhouse.writer.verticle;
 
-import ru.datamart.kafka.clickhouse.writer.configuration.AppConfiguration;
-import ru.datamart.kafka.clickhouse.writer.configuration.properties.VerticleProperties;
-import ru.datamart.kafka.clickhouse.writer.controller.InsertDataController;
-import ru.datamart.kafka.clickhouse.writer.controller.VersionController;
-import ru.datamart.kafka.clickhouse.writer.model.DataTopic;
-import ru.datamart.kafka.clickhouse.writer.verticle.handler.SendResponseHandler;
 import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.Message;
-import io.vertx.core.http.HttpServer;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.stereotype.Component;
+import ru.datamart.kafka.clickhouse.writer.configuration.AppConfiguration;
+import ru.datamart.kafka.clickhouse.writer.configuration.properties.VerticleProperties;
+import ru.datamart.kafka.clickhouse.writer.controller.InsertDataController;
+import ru.datamart.kafka.clickhouse.writer.controller.VersionController;
+import ru.datamart.kafka.clickhouse.writer.model.DataTopic;
+import ru.datamart.kafka.clickhouse.writer.verticle.handler.SendResponseHandler;
 
 
 @Slf4j
@@ -46,17 +45,16 @@ public class DataVerticle extends ConfigurableVerticle {
     private final Vertx vertxCore;
 
     @Override
-    public void start() {
+    public void start(Promise<Void> startPromise) {
         Router router = Router.router(vertx);
         router.mountSubRouter("/", apiRouter());
-        HttpServer httpServer = vertx.createHttpServer().requestHandler(router).listen(configuration.httpPort());
-        log.info("server is running on port: [{}]", httpServer.actualPort());
+        vertx.createHttpServer().requestHandler(router).listen(configuration.httpPort())
+                .onSuccess(httpServer -> {
+                    log.info("Registered instance on port: [{}]", httpServer.actualPort());
+                    startPromise.complete();
+                })
+                .onFailure(startPromise::fail);
         vertxCore.eventBus().consumer(DataTopic.SEND_RESPONSE.getValue(), this::handleSendResponse);
-    }
-
-    @Override
-    public void stop(Future<Void> stopFuture) throws Exception {
-        super.stop(stopFuture);
     }
 
     private void handleSendResponse(Message<String> contextId) {

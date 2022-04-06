@@ -15,11 +15,13 @@
  */
 package ru.datamart.kafka.clickhouse.writer.verticle.handler;
 
-import ru.datamart.kafka.clickhouse.writer.repository.InsertDataContextRepository;
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import lombok.var;
 import org.springframework.stereotype.Component;
+import ru.datamart.kafka.clickhouse.writer.repository.InsertDataContextRepository;
 
 @Slf4j
 @Component
@@ -32,13 +34,18 @@ public class SendResponseHandler {
         repository.remove(contextId).ifPresent(context -> {
             log.debug("Received context: {}", context);
             log.debug("Processing time: [{}] ms by request [{}]", context.getProcessingTime(), context.getRequest());
-            context.getVerticleIds().forEach(verticleId -> vertx.undeploy(verticleId, ar -> {
-                if (ar.succeeded()) {
-                    log.debug("Undeploy verticle success [{}]", verticleId);
-                } else {
-                    log.debug("Undeploy verticle error [{}]: {}", verticleId, ar.cause());
-                }
-            }));
+            var sequentialUndeploy = Future.<Void>succeededFuture();
+            for (String verticleId : context.getVerticleIds()) {
+                sequentialUndeploy = sequentialUndeploy.compose(v -> vertx.undeploy(verticleId))
+                        .onComplete(ar -> {
+                            if (ar.succeeded()) {
+                                log.debug("Undeploy verticle success [{}]", verticleId);
+                            } else {
+                                log.debug("Undeploy verticle error [{}]: {}", verticleId, ar.cause());
+                            }
+                        })
+                        .otherwiseEmpty();
+            }
         });
     }
 }

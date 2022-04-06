@@ -15,6 +15,9 @@
  */
 package ru.datamart.kafka.clickhouse.avro.codec;
 
+import org.apache.avro.LogicalTypes;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.specific.SpecificData;
 import ru.datamart.kafka.clickhouse.avro.codec.conversion.BigDecimalConversion;
 import ru.datamart.kafka.clickhouse.avro.codec.conversion.LocalDateConversion;
 import ru.datamart.kafka.clickhouse.avro.codec.conversion.LocalDateTimeConversion;
@@ -23,23 +26,25 @@ import ru.datamart.kafka.clickhouse.avro.codec.type.BigDecimalLogicalType;
 import ru.datamart.kafka.clickhouse.avro.codec.type.LocalDateLogicalType;
 import ru.datamart.kafka.clickhouse.avro.codec.type.LocalDateTimeLogicalType;
 import ru.datamart.kafka.clickhouse.avro.codec.type.LocalTimeLogicalType;
-import org.apache.avro.LogicalTypes;
-import org.apache.avro.generic.GenericData;
-import org.apache.avro.specific.SpecificData;
 
-public abstract class AvroSerdeHelper {
+public abstract class SpecificDataConfigurer {
     static {
         GenericData.get().addLogicalTypeConversion(LocalDateConversion.getInstance());
         GenericData.get().addLogicalTypeConversion(LocalTimeConversion.getInstance());
         GenericData.get().addLogicalTypeConversion(LocalDateTimeConversion.getInstance());
         GenericData.get().addLogicalTypeConversion(BigDecimalConversion.getInstance());
-        SpecificData.get().addLogicalTypeConversion(LocalDateConversion.getInstance());
-        SpecificData.get().addLogicalTypeConversion(LocalTimeConversion.getInstance());
-        SpecificData.get().addLogicalTypeConversion(LocalDateTimeConversion.getInstance());
-        SpecificData.get().addLogicalTypeConversion(BigDecimalConversion.getInstance());
         LogicalTypes.register(LocalDateTimeLogicalType.INSTANCE.getName(), schema -> LocalDateTimeLogicalType.INSTANCE);
         LogicalTypes.register(LocalDateLogicalType.INSTANCE.getName(), schema -> LocalDateLogicalType.INSTANCE);
         LogicalTypes.register(LocalTimeLogicalType.INSTANCE.getName(), schema -> LocalTimeLogicalType.INSTANCE);
         LogicalTypes.register(BigDecimalLogicalType.INSTANCE.getName(), schema -> BigDecimalLogicalType.INSTANCE);
+    }
+
+    protected final SpecificData specificData = new SpecificData();
+
+    public SpecificDataConfigurer() {
+        specificData.addLogicalTypeConversion(LocalDateConversion.getInstance());
+        specificData.addLogicalTypeConversion(LocalTimeConversion.getInstance());
+        specificData.addLogicalTypeConversion(LocalDateTimeConversion.getInstance());
+        specificData.addLogicalTypeConversion(BigDecimalConversion.getInstance());
     }
 }

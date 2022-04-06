@@ -26,7 +26,7 @@
     <parent>
         <artifactId>kafka-clickhouse-connector-parent</artifactId>
         <groupId>ru.datamart.connector</groupId>
-        <version>3.6.0</version>
+        <version>3.7.0</version>
     </parent>
 
     <dependencies>
@@ -43,8 +43,8 @@
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <version>5.7.0</version>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit-jupiter.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

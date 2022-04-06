@@ -15,11 +15,6 @@
  */
 package ru.datamart.kafka.clickhouse.writer.factory.impl;
 
-import ru.datamart.kafka.clickhouse.writer.configuration.properties.DatamartProperties;
-import ru.datamart.kafka.clickhouse.writer.configuration.properties.EnvProperties;
-import ru.datamart.kafka.clickhouse.writer.model.InsertDataContext;
-import ru.datamart.kafka.clickhouse.writer.model.InsertDataRequest;
-import ru.datamart.kafka.clickhouse.writer.model.sql.ClickhouseInsertSqlRequest;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonArray;
 import io.vertx.ext.web.RoutingContext;
@@ -30,6 +25,10 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import ru.datamart.kafka.clickhouse.writer.configuration.properties.EnvProperties;
+import ru.datamart.kafka.clickhouse.writer.model.InsertDataContext;
+import ru.datamart.kafka.clickhouse.writer.model.InsertDataRequest;
+import ru.datamart.kafka.clickhouse.writer.model.sql.ClickhouseInsertSqlRequest;
 
 import java.util.Arrays;
 import java.util.List;
@@ -51,7 +50,7 @@ class InsertSqlRequestFactoryImplTest {
     public void before() {
         EnvProperties envProperties = new EnvProperties();
         envProperties.setName("local");
-        factory = new InsertRequestFactoryImpl(new DatamartProperties("sys_from"), envProperties);
+        factory = new InsertRequestFactoryImpl(envProperties);
 
         HttpServerRequest httpServerRequest = mock(HttpServerRequest.class);
         when(routingContext.request()).thenReturn(httpServerRequest);
@@ -62,7 +61,6 @@ class InsertSqlRequestFactoryImplTest {
         val request = new InsertDataRequest();
         request.setDatamart("test_datamart");
         request.setKafkaTopic("kafka_topic");
-        request.setHotDelta(EXPECTED_DELTA);
         request.setTableName("test_table");
         request.setSchema(SchemaBuilder.record("test").fields()
                 .optionalInt("id")
@@ -79,10 +77,13 @@ class InsertSqlRequestFactoryImplTest {
     }
 
     @Test
-    void createInsertRequestWithoutHotDelta() {
+    void createInsertRequest() {
         context.setInsertSql(factory.getSql(context));
         ClickhouseInsertSqlRequest request = factory.create(context, getRowsWithoutDelta());
-        assertInsertRequest(request, 2);
+        assertEquals(EXPECTED_SQL, request.getSql());
+        assertEquals(10, request.getParams().size());
+        JsonArray tuple = request.getParams().get(0);
+        assertEquals((Integer) 2, tuple.size());
     }
 
     private List<GenericRecord> getRowsWithoutDelta() {
@@ -102,36 +103,4 @@ class InsertSqlRequestFactoryImplTest {
                 .build();
     }
 
-    private void assertInsertRequest(ClickhouseInsertSqlRequest actual, Integer expectedTuples) {
-        assertEquals(EXPECTED_SQL, actual.getSql());
-        assertEquals(10, actual.getParams().size());
-        JsonArray tuple = actual.getParams().get(0);
-        assertEquals(expectedTuples, tuple.size());
-    }
-
-    @Test
-    void createInsertRequestWithHotDelta() {
-        context.setInsertSql(factory.getSql(context));
-        ClickhouseInsertSqlRequest request = factory.create(context, getRowsWithDelta());
-        assertInsertRequest(request, 3);
-    }
-
-    private List<GenericRecord> getRowsWithDelta() {
-        return IntStream.range(0, 10)
-                .mapToObj(it -> getRowWithDelta(it, "name_" + it))
-                .collect(Collectors.toList());
-    }
-
-    private GenericData.Record getRowWithDelta(int expectedId, String expectedName) {
-        val schema = SchemaBuilder.record("test").fields()
-                .optionalString("id")
-                .optionalString("name")
-                .optionalString(InsertRequestFactoryImpl.DEFAULT_HOT_DELTA_FIELD_NAME)
-                .endRecord();
-        return new GenericRecordBuilder(schema)
-                .set("id", expectedId)
-                .set("name", expectedName)
-                .set(InsertRequestFactoryImpl.DEFAULT_HOT_DELTA_FIELD_NAME, 5)
-                .build();
-    }
 }

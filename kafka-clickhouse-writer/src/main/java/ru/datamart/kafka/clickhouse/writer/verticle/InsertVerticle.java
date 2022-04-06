@@ -16,6 +16,12 @@
 package ru.datamart.kafka.clickhouse.writer.verticle;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.json.jackson.DatabindCodec;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import ru.datamart.kafka.clickhouse.writer.configuration.properties.VerticleProperties;
 import ru.datamart.kafka.clickhouse.writer.factory.InsertRequestFactory;
 import ru.datamart.kafka.clickhouse.writer.model.DataTopic;
@@ -23,13 +29,6 @@ import ru.datamart.kafka.clickhouse.writer.model.InsertDataContext;
 import ru.datamart.kafka.clickhouse.writer.model.kafka.InsertChunk;
 import ru.datamart.kafka.clickhouse.writer.model.kafka.PartitionOffset;
 import ru.datamart.kafka.clickhouse.writer.service.executor.DataSourceExecutor;
-import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Future;
-import io.vertx.core.json.jackson.DatabindCodec;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 
 import java.util.ArrayList;
 import java.util.Queue;
@@ -50,8 +49,7 @@ public class InsertVerticle extends ConfigurableVerticle {
     private volatile long timerId;
 
     @Override
-    public void start(Future<Void> startFuture) throws Exception {
-        super.start(startFuture);
+    public void start() {
         vertx.eventBus().consumer(INSERT_START_TOPIC + context.getContextId(),
                 ar -> runProcessInserts());
     }

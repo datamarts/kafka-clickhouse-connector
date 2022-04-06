@@ -21,18 +21,17 @@ import lombok.val;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.file.SeekableByteArrayInput;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.specific.SpecificData;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
-public class AvroDecoder extends AvroSerdeHelper {
-    private final DtmSpecificDatumReader<GenericRecord> datumReader = new DtmSpecificDatumReader<>(SpecificData.get());
+public class AvroDecoder extends SpecificDataConfigurer {
 
     @SneakyThrows
     public List<GenericRecord> decode(byte[] encodedData) {
         val values = new ArrayList<GenericRecord>();
+        val datumReader = new DtmSpecificDatumReader<GenericRecord>(specificData);
         try (val sin = new SeekableByteArrayInput(encodedData)) {
             try (val reader = new DataFileReader<>(sin, datumReader)) {
                 while (reader.hasNext()) {

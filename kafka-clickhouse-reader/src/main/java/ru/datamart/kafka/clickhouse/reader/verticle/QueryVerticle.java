@@ -15,16 +15,16 @@
  */
 package ru.datamart.kafka.clickhouse.reader.verticle;
 
-import ru.datamart.kafka.clickhouse.reader.configuration.AppConfiguration;
-import ru.datamart.kafka.clickhouse.reader.controller.QueryController;
-import ru.datamart.kafka.clickhouse.reader.controller.VersionController;
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.http.HttpServer;
+import io.vertx.core.Promise;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import ru.datamart.kafka.clickhouse.reader.configuration.AppConfiguration;
+import ru.datamart.kafka.clickhouse.reader.controller.QueryController;
+import ru.datamart.kafka.clickhouse.reader.controller.VersionController;
 
 @Slf4j
 @Component
@@ -44,11 +44,15 @@ public class QueryVerticle extends AbstractVerticle {
     }
 
     @Override
-    public void start() {
+    public void start(Promise<Void> startPromise) {
         Router router = Router.router(vertx);
         router.mountSubRouter("/", apiRouter());
-        HttpServer httpServer = vertx.createHttpServer().requestHandler(router).listen(configuration.httpPort());
-        log.info("Server started on port: {}", httpServer.actualPort());
+        vertx.createHttpServer().requestHandler(router).listen(configuration.httpPort())
+                .onSuccess(httpServer -> {
+                    log.info("Registered instance on port: [{}]", httpServer.actualPort());
+                    startPromise.complete();
+                })
+                .onFailure(startPromise::fail);
     }
 
     private Router apiRouter() {

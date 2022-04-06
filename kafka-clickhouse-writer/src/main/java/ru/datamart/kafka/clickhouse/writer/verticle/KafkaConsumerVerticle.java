@@ -15,6 +15,16 @@
  */
 package ru.datamart.kafka.clickhouse.writer.verticle;
 
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.kafka.client.common.PartitionInfo;
+import io.vertx.kafka.client.common.TopicPartition;
+import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import ru.datamart.kafka.clickhouse.avro.codec.AvroDecoder;
 import ru.datamart.kafka.clickhouse.writer.configuration.properties.VerticleProperties;
 import ru.datamart.kafka.clickhouse.writer.factory.InsertRequestFactory;
@@ -26,16 +36,6 @@ import ru.datamart.kafka.clickhouse.writer.model.kafka.PartitionOffset;
 import ru.datamart.kafka.clickhouse.writer.model.kafka.TopicPartitionConsumer;
 import ru.datamart.kafka.clickhouse.writer.model.sql.ClickhouseInsertSqlRequest;
 import ru.datamart.kafka.clickhouse.writer.service.kafka.KafkaConsumerService;
-import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.kafka.client.common.PartitionInfo;
-import io.vertx.kafka.client.common.TopicPartition;
-import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
@@ -63,8 +63,7 @@ public class KafkaConsumerVerticle extends ConfigurableVerticle {
     private Future<Object> processFuture;
 
     @Override
-    public void start(Future<Void> startFuture) throws Exception {
-        super.start(startFuture);
+    public void start() {
         vertx.eventBus().consumer(START_TOPIC + context.getContextId(),
                 ar -> getTopicPartitionConsumerFuture());
     }

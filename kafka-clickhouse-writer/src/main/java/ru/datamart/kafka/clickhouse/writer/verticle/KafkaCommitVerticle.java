@@ -17,6 +17,14 @@ package ru.datamart.kafka.clickhouse.writer.verticle;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.jackson.DatabindCodec;
+import io.vertx.kafka.client.common.TopicPartition;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import ru.datamart.kafka.clickhouse.avro.codec.AvroDecoder;
 import ru.datamart.kafka.clickhouse.writer.configuration.properties.VerticleProperties;
 import ru.datamart.kafka.clickhouse.writer.factory.InsertRequestFactory;
@@ -25,15 +33,6 @@ import ru.datamart.kafka.clickhouse.writer.model.InsertDataContext;
 import ru.datamart.kafka.clickhouse.writer.model.kafka.PartitionOffset;
 import ru.datamart.kafka.clickhouse.writer.model.kafka.TopicPartitionConsumer;
 import ru.datamart.kafka.clickhouse.writer.service.kafka.KafkaConsumerService;
-import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Future;
-import io.vertx.core.eventbus.Message;
-import io.vertx.core.json.jackson.DatabindCodec;
-import io.vertx.kafka.client.common.TopicPartition;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -58,8 +57,7 @@ public class KafkaCommitVerticle extends ConfigurableVerticle {
     private volatile boolean stopped;
 
     @Override
-    public void start(Future<Void> startFuture) throws Exception {
-        super.start(startFuture);
+    public void start() {
         vertx.eventBus().consumer(START_COMMIT + context.getContextId(),
                 ar -> init());
 
@@ -88,25 +86,30 @@ public class KafkaCommitVerticle extends ConfigurableVerticle {
             return;
         }
 
-        timerId = vertx.setPeriodic(1000, timer -> {
-            List<PartitionOffset> byCommit = new ArrayList<>();
-            while (!offsetsQueue.isEmpty()) {
-                PartitionOffset offset = offsetsQueue.poll();
-                if (offset != null) {
-                    byCommit.add(offset);
-                } else {
-                    break;
-                }
+        timerId = vertx.setPeriodic(1000, timer -> commitOffsets());
+    }
+
+    private void commitOffsets() {
+        List<PartitionOffset> byCommit = new ArrayList<>();
+        while (!offsetsQueue.isEmpty()) {
+            PartitionOffset offset = offsetsQueue.poll();
+            if (offset != null) {
+                byCommit.add(offset);
+            } else {
+                break;
             }
-            List<PartitionOffset> notExistsConsumers = commitKafkaMessages(byCommit);
-            offsetsQueue.addAll(notExistsConsumers);
-        });
+        }
+        List<PartitionOffset> notExistsConsumers = commitKafkaMessages(byCommit);
+        offsetsQueue.addAll(notExistsConsumers);
     }
 
     @Override
     public void stop() {
         stopped = true;
         vertx.cancelTimer(timerId);
+        if (!offsetsQueue.isEmpty()) {
+            commitOffsets();
+        }
     }
 
     private List<PartitionOffset> commitKafkaMessages(List<PartitionOffset> partitionOffsets) {

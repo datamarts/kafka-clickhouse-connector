@@ -26,11 +26,11 @@ import java.io.ByteArrayOutputStream;
 import java.util.List;
 
 @Slf4j
-public class AvroEncoder<T> extends AvroSerdeHelper {
+public class AvroEncoder<T> extends SpecificDataConfigurer {
 
     @SneakyThrows
     public byte[] encode(List<T> values, Schema schema) {
-        try (val writer = new DataFileWriter<T>(new SpecificDatumWriter<>(schema))) {
+        try (val writer = new DataFileWriter<T>(new SpecificDatumWriter<>(schema, specificData))) {
             val baos = new ByteArrayOutputStream();
             writer.create(schema, baos);
             for (T value : values) {

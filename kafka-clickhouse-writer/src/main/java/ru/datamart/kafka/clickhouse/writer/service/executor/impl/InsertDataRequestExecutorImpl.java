@@ -16,19 +16,6 @@
 package ru.datamart.kafka.clickhouse.writer.service.executor.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import ru.datamart.kafka.clickhouse.writer.configuration.properties.VerticleProperties;
-import ru.datamart.kafka.clickhouse.writer.factory.InsertRequestFactory;
-import ru.datamart.kafka.clickhouse.writer.model.DataTopic;
-import ru.datamart.kafka.clickhouse.writer.model.InsertDataContext;
-import ru.datamart.kafka.clickhouse.writer.model.kafka.InsertChunk;
-import ru.datamart.kafka.clickhouse.writer.model.kafka.TopicPartitionConsumer;
-import ru.datamart.kafka.clickhouse.writer.repository.InsertDataContextRepository;
-import ru.datamart.kafka.clickhouse.writer.service.executor.InsertDataRequestExecutor;
-import ru.datamart.kafka.clickhouse.writer.service.kafka.KafkaConsumerService;
-import ru.datamart.kafka.clickhouse.writer.verticle.ConfigurableVerticle;
-import ru.datamart.kafka.clickhouse.writer.verticle.InsertVerticle;
-import ru.datamart.kafka.clickhouse.writer.verticle.KafkaCommitVerticle;
-import ru.datamart.kafka.clickhouse.writer.verticle.KafkaConsumerVerticle;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -42,7 +29,21 @@ import org.apache.avro.Schema;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MimeTypeUtils;
+import ru.datamart.kafka.clickhouse.writer.configuration.properties.VerticleProperties;
+import ru.datamart.kafka.clickhouse.writer.factory.InsertRequestFactory;
+import ru.datamart.kafka.clickhouse.writer.model.DataTopic;
+import ru.datamart.kafka.clickhouse.writer.model.InsertDataContext;
+import ru.datamart.kafka.clickhouse.writer.model.kafka.InsertChunk;
+import ru.datamart.kafka.clickhouse.writer.model.kafka.TopicPartitionConsumer;
+import ru.datamart.kafka.clickhouse.writer.repository.InsertDataContextRepository;
+import ru.datamart.kafka.clickhouse.writer.service.executor.InsertDataRequestExecutor;
+import ru.datamart.kafka.clickhouse.writer.service.kafka.KafkaConsumerService;
+import ru.datamart.kafka.clickhouse.writer.verticle.ConfigurableVerticle;
+import ru.datamart.kafka.clickhouse.writer.verticle.InsertVerticle;
+import ru.datamart.kafka.clickhouse.writer.verticle.KafkaCommitVerticle;
+import ru.datamart.kafka.clickhouse.writer.verticle.KafkaConsumerVerticle;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Queue;
@@ -93,43 +94,44 @@ public class InsertDataRequestExecutorImpl implements InsertDataRequestExecutor 
 
                 Queue<InsertChunk> insertChunkQueue = new ConcurrentLinkedDeque<>();
                 HashMap<TopicPartition, TopicPartitionConsumer> consumerMap = new HashMap<>();
-
-                List<ConfigurableVerticle> insertDataVerticles = topicPartitions.stream()
-                    .map(topicPartition -> KafkaConsumerVerticle.builder()
-                        .workerProperties(verticleProperties.getKafkaConsumerWorker())
-                        .insertRequestFactory(insertRequestFactory)
-                        .insertChunkQueue(insertChunkQueue)
-                        .consumerService(consumerService)
-                        .partitionInfo(topicPartition)
-                        .consumerMap(consumerMap)
-                        .context(context)
-                        .build())
-                    .collect(Collectors.toList());
-
-                insertDataVerticles.add(
-                    KafkaCommitVerticle.builder()
-                        .workerProperties(verticleProperties.getKafkaCommitWorker())
-                        .insertRequestFactory(insertRequestFactory)
-                        .consumerService(consumerService)
-                        .consumerMap(consumerMap)
-                        .context(context)
-                        .build()
-                );
+                List<ConfigurableVerticle> verticles = new ArrayList<>();
 
                 clickhouseExecutors.stream()
-                    .map(executor -> InsertVerticle.builder()
-                        .executor(executor)
-                        .workerProperties(verticleProperties.getInsertWorker())
-                        .insertRequestFactory(insertRequestFactory)
-                        .insertChunkQueue(insertChunkQueue)
-                        .context(context)
-                        .build())
-                    .forEach(insertDataVerticles::add);
+                        .map(executor -> InsertVerticle.builder()
+                                .executor(executor)
+                                .workerProperties(verticleProperties.getInsertWorker())
+                                .insertRequestFactory(insertRequestFactory)
+                                .insertChunkQueue(insertChunkQueue)
+                                .context(context)
+                                .build())
+                        .forEach(verticles::add);
+
+                verticles.add(
+                        KafkaCommitVerticle.builder()
+                                .workerProperties(verticleProperties.getKafkaCommitWorker())
+                                .insertRequestFactory(insertRequestFactory)
+                                .consumerService(consumerService)
+                                .consumerMap(consumerMap)
+                                .context(context)
+                                .build()
+                );
+
+                topicPartitions.stream()
+                        .map(topicPartition -> KafkaConsumerVerticle.builder()
+                                .workerProperties(verticleProperties.getKafkaConsumerWorker())
+                                .insertRequestFactory(insertRequestFactory)
+                                .insertChunkQueue(insertChunkQueue)
+                                .consumerService(consumerService)
+                                .partitionInfo(topicPartition)
+                                .consumerMap(consumerMap)
+                                .context(context)
+                                .build())
+                        .forEach(verticles::add);
 
                 CompositeFuture.join(
-                    insertDataVerticles.stream()
-                        .map(this::getVerticleFuture)
-                        .collect(Collectors.toList())
+                        verticles.stream()
+                                .map(this::getVerticleFuture)
+                                .collect(Collectors.toList())
                 ).onSuccess(success -> {
                     context.getVerticleIds().addAll(success.list());
                     vertxCore.eventBus().publish(KafkaConsumerVerticle.START_TOPIC + context.getContextId(), "");

@@ -17,11 +17,11 @@ package ru.datamart.kafka.clickhouse.writer.model;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.Data;
+import org.apache.avro.Schema;
 import ru.datamart.kafka.clickhouse.avro.SchemaDeserializer;
 import ru.datamart.kafka.clickhouse.avro.SchemaSerializer;
 import ru.datamart.kafka.clickhouse.writer.model.kafka.KafkaBrokerInfo;
-import lombok.Data;
-import org.apache.avro.Schema;
 
 import java.io.Serializable;
 import java.util.List;
@@ -29,7 +29,6 @@ import java.util.List;
 @Data
 public class InsertDataRequest implements Serializable {
     private String requestId;
-    private int hotDelta;
     private String datamart;
     private String tableName;
     private List<KafkaBrokerInfo> kafkaBrokers;
@@ -40,4 +39,5 @@ public class InsertDataRequest implements Serializable {
     @JsonSerialize(using = SchemaSerializer.class)
     private Schema schema;
     private int messageProcessingLimit;
+    private boolean writeIntoDistributedTable;
 }
